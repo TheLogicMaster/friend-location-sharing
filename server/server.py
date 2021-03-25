@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 
 @app.route('/users')
-def hello_world():
+def users():
     return ['albi', 'justin']
 
 
