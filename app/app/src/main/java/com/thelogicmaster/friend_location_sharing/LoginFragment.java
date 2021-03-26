@@ -1,43 +1,79 @@
 package com.thelogicmaster.friend_location_sharing;
 
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.fragment.app.Fragment;
-
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.KeyEvent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.thelogicmaster.friend_location_sharing.R;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
+
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
 
 public class LoginFragment extends Fragment {
 
-    @Nullable
+    private RequestQueue queue;
+
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_login, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_login, container, false);
+        final EditText usernameEdit = view.findViewById(R.id.username);
+        final EditText passwordEdit = view.findViewById(R.id.password);
+
+        queue = Volley.newRequestQueue(requireContext());
+
+        view.findViewById(R.id.login).setOnClickListener(v -> {
+            queue.add(new AuthStringRequest(Request.Method.GET, Helpers.BASE_URL + "login",
+                    response -> {
+                        Toast.makeText(getContext(), response, Toast.LENGTH_LONG).show();
+                        login(view, usernameEdit.getText().toString(), passwordEdit.getText().toString());
+                    },
+                    error -> {
+                        if (error.networkResponse != null && error.networkResponse.statusCode == 401) {
+                            Toast.makeText(getContext(), "Incorrect credentials (Hint: try \"user:1234\")", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        Log.e("Login", "Failed to login", error);
+                        Toast.makeText(getContext(), "Something went wrong", Toast.LENGTH_LONG).show();
+                    }, Helpers.getAuth(usernameEdit.getText().toString(), passwordEdit.getText().toString())));
+        });
+
+        view.findViewById(R.id.signup).setOnClickListener(v -> {
+            queue.add(new AuthStringRequest(Request.Method.GET, Helpers.BASE_URL +
+                    "signup?username=" + usernameEdit.getText() + "&password=" + passwordEdit.getText(),
+                    response -> {
+                        Toast.makeText(getContext(), response, Toast.LENGTH_LONG).show();
+                        if ("Successfully created account!".equals(response))
+                            login(view, usernameEdit.getText().toString(), passwordEdit.getText().toString());
+                    },
+                    error -> {
+                        Log.e("Signup", "Failed to signup", error);
+                        Toast.makeText(getContext(), "Something went wrong", Toast.LENGTH_LONG).show();
+                    }, Helpers.getAuth(requireActivity())));
+        });
+
+        return view;
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    public void onPause() {
+        super.onPause();
+        queue.stop();
+    }
 
-        final EditText usernameEditText = view.findViewById(R.id.username);
-        final EditText passwordEditText = view.findViewById(R.id.password);
-        final Button loginButton = view.findViewById(R.id.login);
-        final ProgressBar loadingProgressBar = view.findViewById(R.id.loading);
+    @Override
+    public void onResume() {
+        super.onResume();
+        queue.start();
+    }
+
+    private void login(View view, String username, String password) {
+        Helpers.setCredentials(requireActivity(), username, password);
+        Navigation.findNavController(view).navigate(R.id.action_loginFragment_to_homeFragment);
     }
 }
