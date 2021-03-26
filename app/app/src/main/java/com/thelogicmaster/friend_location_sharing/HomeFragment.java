@@ -22,6 +22,10 @@ public class HomeFragment extends Fragment {
 
         view.findViewById(R.id.settingsButton).setOnClickListener(Navigation.createNavigateOnClickListener(R.id.action_homeFragment_to_settingsFragment, null));
 
+        view.findViewById(R.id.friendsButton).setOnClickListener(Navigation.createNavigateOnClickListener(R.id.action_homeFragment_to_friendFragment, null));
+
+        view.findViewById(R.id.groupsButton).setOnClickListener(Navigation.createNavigateOnClickListener(R.id.action_homeFragment_to_groupListFragment, null));
+
         view.findViewById(R.id.logoutButton).setOnClickListener(v -> {
             Helpers.setCredentials(requireActivity(), null, null);
             Navigation.findNavController(view).navigate(R.id.action_homeFragment_to_loginFragment);

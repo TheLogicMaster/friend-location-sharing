@@ -28,15 +28,49 @@
             app:destination="@id/settingsFragment" />
         <action
             android:id="@+id/action_homeFragment_to_friendFragment"
-            app:destination="@id/friendsFragment" />
+            app:destination="@id/friendsListFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_groupListFragment"
+            app:destination="@id/groupsListFragment" />
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.thelogicmaster.friend_location_sharing.SettingsFragment"
         android:label="SettingsFragment" />
     <fragment
-        android:id="@+id/friendsFragment"
+        android:id="@+id/friendsListFragment"
         android:name="com.thelogicmaster.friend_location_sharing.FriendListFragment"
         android:label="fragment_friend_list"
-        tools:layout="@layout/fragment_friend_list" />
+        tools:layout="@layout/fragment_friend_list" >
+        <action
+            android:id="@+id/action_friendsListFragment_to_friendFragment"
+            app:destination="@id/friendFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/groupsListFragment"
+        android:name="com.thelogicmaster.friend_location_sharing.GroupListFragment"
+        android:label="fragment_group_list"
+        tools:layout="@layout/fragment_group_list" >
+        <action
+            android:id="@+id/action_groupListFragment_to_groupFragment"
+            app:destination="@id/groupFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/groupFragment"
+        android:name="com.thelogicmaster.friend_location_sharing.GroupFragment"
+        android:label="fragment_group"
+        tools:layout="@layout/fragment_group" >
+        <argument
+            android:name="id"
+            app:argType="string" />
+    </fragment>
+    <fragment
+        android:id="@+id/friendFragment"
+        android:name="com.thelogicmaster.friend_location_sharing.FriendFragment"
+        android:label="fragment_friend"
+        tools:layout="@layout/fragment_friend" >
+        <argument
+            android:name="name"
+            app:argType="string" />
+    </fragment>
 </navigation>

@@ -17,10 +17,22 @@
             android:gravity="center" />
 
         <Button
+            android:id="@+id/friendsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Friends" />
+
+        <Button
+            android:id="@+id/groupsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Groups" />
+
+        <Button
             android:id="@+id/settingsButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Chat" />
+            android:text="Settings" />
 
         <Button
             android:id="@+id/logoutButton"

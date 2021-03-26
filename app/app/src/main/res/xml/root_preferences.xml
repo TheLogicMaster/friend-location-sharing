@@ -2,17 +2,17 @@
 
     <PreferenceCategory app:title="Location Settings">
 
-        <EditTextPreference
-            app:key="signature"
-            app:title="signature_title"
-            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            app:defaultValue="true"
+            app:key="autoLocation"
+            app:title="Automatic Location Sharing"/>
 
         <ListPreference
-            app:defaultValue="reply"
-            app:entries="@array/reply_entries"
-            app:entryValues="@array/reply_values"
-            app:key="reply"
-            app:title="reply_title"
+            app:defaultValue="ALL"
+            app:entries="@array/sharing_entries"
+            app:entryValues="@array/sharing_values"
+            app:key="sharing"
+            app:title="Location Sharing"
             app:useSimpleSummaryProvider="true" />
 
     </PreferenceCategory>

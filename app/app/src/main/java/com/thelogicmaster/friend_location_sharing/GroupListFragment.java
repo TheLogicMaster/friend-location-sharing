@@ -2,18 +2,17 @@ package com.thelogicmaster.friend_location_sharing;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -28,17 +27,17 @@ import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class FriendListFragment extends Fragment {
+public class GroupListFragment extends Fragment {
 
     private RequestQueue queue;
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerView;
-    private FriendRecyclerViewAdapter adapter;
+    private GroupRecyclerViewAdapter adapter;
     private Timer timer;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_friend_list, container, false);
+        View view = inflater.inflate(R.layout.fragment_group_list, container, false);
 
         queue = Volley.newRequestQueue(requireContext());
 
@@ -47,10 +46,10 @@ public class FriendListFragment extends Fragment {
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
-        adapter = new FriendRecyclerViewAdapter(friend -> {
+        adapter = new GroupRecyclerViewAdapter(group -> {
             Bundle params = new Bundle();
-            params.putString("name", friend.name);
-            Navigation.findNavController(view).navigate(R.id.action_friendsListFragment_to_friendFragment, params);
+            params.putString("group", group.id);
+            Navigation.findNavController(view).navigate(R.id.action_groupListFragment_to_groupFragment, params);
         });
         recyclerView.setAdapter(adapter);
 
@@ -59,24 +58,31 @@ public class FriendListFragment extends Fragment {
 
     private void refresh() {
         queue.start();
-        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "friends", null,
-                friendsObj -> {
+        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "groups", null,
+                response -> {
                     try {
-                        ArrayList<Friend> friends = new ArrayList<>();
-                        for (Iterator<String> it = friendsObj.keys(); it.hasNext(); ) {
-                            String name = it.next();
-                            JSONObject friendObj = friendsObj.getJSONObject(name);
-                            friends.add(new Friend(name, Sharing.valueOf(friendObj.getString("sharing"))));
+                        JSONArray groupArray = response.getJSONArray("groups");
+                        ArrayList<Group> groups = new ArrayList<>();
+                        for (int i = 0; i < groupArray.length(); i++) {
+                            JSONObject groupObj = groupArray.getJSONObject(i);
+                            JSONObject usersObj = groupObj.getJSONObject("users");
+                            ArrayList<Friend> users = new ArrayList<>();
+                            for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
+                                String name = it.next();
+                                JSONObject userObj = usersObj.getJSONObject(name);
+                                users.add(new Friend(name, Sharing.valueOf(userObj.getString("sharing"))));
+                            }
+                            groups.add(new Group(groupObj.getString("id"), groupObj.getString("name"), users));
                         }
-                        adapter.setFriends(friends);
+                        adapter.setGroups(groups);
                         recyclerView.scrollToPosition(adapter.getItemCount() - 1);
                     } catch (JSONException e) {
-                        Log.e("FriendsParsing", "Failed to parse friends", e);
+                        Log.e("GroupsParsing", "Failed to parse groups", e);
                     }
                     swipeRefresh.setRefreshing(false);
                 },
                 error -> {
-                    Log.e("FriendsRequest", "Failed to get friends", error);
+                    Log.e("GroupsRequest", "Failed to get groups", error);
                     swipeRefresh.setRefreshing(false);
                 }, Helpers.getAuth(requireActivity())));
     }

@@ -1,56 +1,174 @@
 package com.thelogicmaster.friend_location_sharing;
 
+import android.Manifest;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.toolbox.Volley;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
-import android.view.View;
+import android.util.Log;
 
-import android.view.Menu;
-import android.view.MenuItem;
+import android.widget.Toast;
+
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
+
+    private RequestQueue queue;
+    private Timer timer;
+    private boolean autoLocation;
+    private String sharing;
+    private SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
+    private FusedLocationProviderClient locationClient;
+    private Location location;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        queue = Volley.newRequestQueue(this);
+        locationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        autoLocation = prefs.getBoolean("autoLocation", false);
+        sharing = prefs.getString("sharing", "OFF");
+
+        prefsListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+                if ("autoLocation".equals(key))
+                    autoLocation = sharedPreferences.getBoolean("autoLocation", false);
+                else if ("sharing".equals(key)) {
+                    sharing = sharedPreferences.getString("sharing", "OFF");
+                    updateSharing();
+                }
+            }
+        };
+
+        findViewById(R.id.fab).setOnClickListener(view -> updateLocation(true));
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        queue.stop();
+        if (timer != null)
+            timer.cancel();
+        PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(prefsListener);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        queue.start();
+
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                updateLocation(false);
+            }
+        }, 0, 5000);
+
+        PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(prefsListener);
+    }
+
+    private void updateLocation(boolean manual) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (manual)
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 6969);
+            return;
+        }
+
+        if (!manual && !autoLocation)
+            return;
+
+        locationClient.getLastLocation().addOnSuccessListener(this, location -> {
+            if (location == null) {
+                if (manual)
+                    Toast.makeText(MainActivity.this, "Failed to get location", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            this.location = location;
+        });
+
+        JSONObject data = new JSONObject();
+        try {
+            if (location != null) {
+                data.put("long", location.getLongitude());
+                data.put("lat", location.getLatitude());
+            }
+            data.put("sharing", sharing);
+        } catch (JSONException e) {
+            Log.e("UpdateLocation", "Failed to create location data object", e);
+            return;
+        }
+
+        sendLocationData(data, !manual);
+    }
+
+    private void updateSharing() {
+        JSONObject data = new JSONObject();
+        try {
+            data.put("sharing", sharing);
+        } catch (JSONException e) {
+            Log.e("UpdateLocation", "Failed to create sharing data object", e);
+            return;
+        }
+        sendLocationData(data, false);
+    }
+
+    private void sendLocationData(JSONObject data, boolean silent) {
+        queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "updateLocation", data,
+                response -> {
+                    if (!silent)
+                        Toast.makeText(this, "Updated location", Toast.LENGTH_SHORT).show();
+                },
+                error -> {
+                    if (!silent)
+                        Toast.makeText(this, "Failed to update location", Toast.LENGTH_SHORT).show();
+                    Log.e("UpdateLocation", "Failed", error);
+                }, Helpers.getAuth(this)) {
+            @Override
+            protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
+                return Response.success(null, null);
             }
         });
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+    public void onRequestPermissionsResult(int requestCode, @NotNull String[] permissions, @NotNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != 6969)
+            return;
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            updateLocation(true);
+        else
+            Toast.makeText(this, "This app can't function without location permissions", Toast.LENGTH_SHORT).show();
     }
 }
