@@ -13,6 +13,11 @@ import android.widget.TextView;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +34,7 @@ public class FriendFragment extends Fragment {
     private Timer timer;
     private String name;
     private TextView nameText;
+    private GoogleMap googleMap;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -39,6 +45,10 @@ public class FriendFragment extends Fragment {
         name = getArguments().getString("name");
 
         nameText = view.findViewById(R.id.friend_name);
+
+        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+        if (mapFragment != null)
+            mapFragment.getMapAsync(googleMap -> this.googleMap = googleMap);
 
         return view;
     }
@@ -58,6 +68,11 @@ public class FriendFragment extends Fragment {
                         }
                         Friend friend = new Friend(friendObj.getString("name"),
                                 Sharing.valueOf(friendObj.getString("sharing")), locations);
+                        if (googleMap != null && friend.locations.size() > 0) {
+                            LatLng latLng = friend.locations.get(friend.locations.size() - 1).latLng;
+                            googleMap.addMarker(new MarkerOptions().position(latLng).title(friend.name));
+                            googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                        }
                         nameText.setText(friend.name);
                     } catch (JSONException e) {
                         Log.e("FriendParsing", "Failed to parse friend", e);

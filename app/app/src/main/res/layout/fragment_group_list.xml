@@ -11,11 +11,24 @@
     app:layoutManager="LinearLayoutManager"
     tools:context=".GroupListFragment">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/list"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layoutManager="LinearLayoutManager"
-        tools:listitem="@layout/fragment_group_item" />
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/add_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add Group"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layoutManager="LinearLayoutManager"
+            tools:listitem="@layout/fragment_group_item" />
+    </LinearLayout>
+
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

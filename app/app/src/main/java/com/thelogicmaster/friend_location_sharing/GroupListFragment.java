@@ -23,6 +23,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -43,6 +44,15 @@ public class GroupListFragment extends Fragment {
 
         swipeRefresh = view.findViewById(R.id.refresh);
         swipeRefresh.setOnRefreshListener(this::refresh);
+
+        view.findViewById(R.id.add_group).setOnClickListener(
+                v -> queue.add(new FriendsListRequest(getActivity(),
+                friends -> (new AddGroupDialog(friends)).show(getChildFragmentManager(), "AddGroup"),
+                e -> {
+                    Log.e("AddGroup", "Failed to get friends", e);
+                    Toast.makeText(requireContext(), "Failed to get friends list", Toast.LENGTH_SHORT).show();
+                })
+        ));
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));

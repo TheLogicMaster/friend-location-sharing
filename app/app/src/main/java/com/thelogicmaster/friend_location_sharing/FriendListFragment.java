@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -45,6 +46,20 @@ public class FriendListFragment extends Fragment {
         swipeRefresh = view.findViewById(R.id.refresh);
         swipeRefresh.setOnRefreshListener(this::refresh);
 
+        final EditText usernameText = view.findViewById(R.id.username);
+        view.findViewById(R.id.add_friend).setOnClickListener(v -> {
+            if (!"".equals(usernameText.getText().toString()))
+                queue.add(new AuthStringRequest(Request.Method.POST, Helpers.BASE_URL + "addFriend?username=" + usernameText.getText(),
+                        response -> {
+                            usernameText.setText("");
+                            refresh();
+                        },
+                        error -> {
+                            Log.e("FriendsRequest", "Failed to add friend", error);
+                            Toast.makeText(requireContext(), "Failed to add friend", Toast.LENGTH_SHORT).show();
+                        }, Helpers.getAuth(requireActivity())));
+        });
+
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
         adapter = new FriendRecyclerViewAdapter(friend -> {
@@ -59,26 +74,13 @@ public class FriendListFragment extends Fragment {
 
     private void refresh() {
         queue.start();
-        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "friends", null,
-                friendsObj -> {
-                    try {
-                        ArrayList<Friend> friends = new ArrayList<>();
-                        for (Iterator<String> it = friendsObj.keys(); it.hasNext(); ) {
-                            String name = it.next();
-                            JSONObject friendObj = friendsObj.getJSONObject(name);
-                            friends.add(new Friend(name, Sharing.valueOf(friendObj.getString("sharing"))));
-                        }
-                        adapter.setFriends(friends);
-                        recyclerView.scrollToPosition(adapter.getItemCount() - 1);
-                    } catch (JSONException e) {
-                        Log.e("FriendsParsing", "Failed to parse friends", e);
-                    }
-                    swipeRefresh.setRefreshing(false);
-                },
-                error -> {
-                    Log.e("FriendsRequest", "Failed to get friends", error);
-                    swipeRefresh.setRefreshing(false);
-                }, Helpers.getAuth(requireActivity())));
+        queue.add(new FriendsListRequest(getActivity(), friends -> {
+            adapter.setFriends(friends);
+            recyclerView.scrollToPosition(adapter.getItemCount() - 1);
+        }, error -> {
+            Log.e("FriendsRequest", "Failed to get friends", error);
+            swipeRefresh.setRefreshing(false);
+        }));
     }
 
     @Override

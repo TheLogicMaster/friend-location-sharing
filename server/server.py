@@ -5,6 +5,7 @@ from os import path
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import uuid
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
@@ -54,7 +55,7 @@ data = {
     'groups': [
         {
             'name': 'Group 1',
-            'id': '1234567890',
+            'id': '8dd60a04-7a0a-4b61-943a-577d5eb384d1',
             'users': {
                 'user1': {
                     'sharing': 'CURRENT'
@@ -98,7 +99,10 @@ def signup():
     if username in data['users']:
         return 'Sorry, that username is already taken'
     data['users'][username] = {
-        'password': generate_password_hash(password)
+        'password': generate_password_hash(password),
+        'friends': {},
+        'sharing': 'ALL',
+        'locations': []
     }
     save_data()
     print(f'{username} signed up using password: {password}')
@@ -146,11 +150,32 @@ def get_group():
     return group
 
 
+@app.route('/createGroup', methods=['post'])
+@auth.login_required
+def create_group():
+    users = {}
+    for user in request.json['users']:
+        users[user] = {
+            'sharing': 'ALL'
+        }
+    if auth.current_user() not in users:
+        users[auth.current_user()] = {
+            'sharing': 'ALL'
+        }
+    data['groups'].append({
+        'name': request.json['name'],
+        'id': str(uuid.uuid4()),
+        'users': users
+    })
+    save_data()
+    return 'OK', 200
+
+
 @app.route('/friends')
 @auth.login_required
 def get_friends():
     return data['users'][auth.current_user()]['friends']
-    
+
 
 @app.route('/friend')
 @auth.login_required
@@ -168,6 +193,19 @@ def get_friend():
     else:
         friend['locations'] = []
     return friend
+
+
+@app.route('/addFriend', methods=['post'])
+@auth.login_required
+def add_friend():
+    username = request.args.get('username')
+    if username in data['users'][auth.current_user()]['friends']:
+        return 'Friend already exists', 200
+    data['users'][auth.current_user()]['friends'][username] = {
+        'sharing': 'ALL'
+    }
+    save_data()
+    return 'OK', 200
 
 
 @app.route('/location')
@@ -209,6 +247,7 @@ def update_location():
     if 'sharing' in request.json:
         data['users'][auth.current_user()]['sharing'] = request.json['sharing']
 
+    save_data()
     return 'OK'
 
 
