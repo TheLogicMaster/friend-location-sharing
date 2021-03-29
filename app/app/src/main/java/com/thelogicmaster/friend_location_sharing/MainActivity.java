@@ -75,7 +75,9 @@ public class MainActivity extends AppCompatActivity {
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 updateLocation(false);
                 location = locationResult.getLastLocation();
-                viewModel.updateLocation(location);
+                viewModel.updateLocation(new com.thelogicmaster.friend_location_sharing.Location(
+                        location.getLongitude(), location.getLatitude(), 0
+                ));
             }
         };
 

@@ -2,7 +2,6 @@ package com.thelogicmaster.friend_location_sharing;
 
 import android.app.Activity;
 import android.app.Application;
-import android.location.Location;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -30,6 +29,7 @@ public class LocationSharingViewModel extends AndroidViewModel {
     private final MutableLiveData<List<Group>> groups = new MutableLiveData<>();
     private final MutableLiveData<Map<String, User>> friends = new MutableLiveData<>();
     private final MutableLiveData<Location> location = new MutableLiveData<>();
+
     private final RequestQueue queue;
 
     public LocationSharingViewModel(@NonNull Application application) {
@@ -80,12 +80,66 @@ public class LocationSharingViewModel extends AndroidViewModel {
                 Helpers.getAuth(getApplication().getApplicationContext())));
     }
 
-    public void updateGroups() {
-
+    public void updateGroups(Response.ErrorListener errorListener) {
+        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "groups", null,
+                response -> {
+                    try {
+                        JSONArray groupArray = response.getJSONArray("groups");
+                        ArrayList<Group> groups = new ArrayList<>();
+                        for (int i = 0; i < groupArray.length(); i++) {
+                            JSONObject groupObj = groupArray.getJSONObject(i);
+                            JSONObject usersObj = groupObj.getJSONObject("users");
+                            ArrayList<User> users = new ArrayList<>();
+                            for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
+                                String name = it.next();
+                                JSONObject userObj = usersObj.getJSONObject(name);
+                                users.add(new User(name, Sharing.valueOf(userObj.getString("sharing"))));
+                            }
+                            groups.add(new Group(groupObj.getString("id"), groupObj.getString("name"), users));
+                        }
+                        this.groups.setValue(groups);
+                    } catch (JSONException e) {
+                        errorListener.onErrorResponse(new VolleyError("Failed to parse groups", e));
+                    }
+                },
+                errorListener, Helpers.getAuth(getApplication().getApplicationContext())));
     }
 
     public void updateGroup(String id) {
-
+        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "group?id=" + id, null,
+                groupObj -> {
+                    try {
+                        JSONObject usersObj = groupObj.getJSONObject("users");
+                        ArrayList<User> users = new ArrayList<>();
+                        for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
+                            String name = it.next();
+                            JSONObject userObj = usersObj.getJSONObject(name);
+                            ArrayList<Location> locations = new ArrayList<>();
+                            JSONArray locationsArray = userObj.getJSONArray("locations");
+                            for (int i = 0; i < locationsArray.length(); i++) {
+                                JSONObject locationObj = locationsArray.getJSONObject(i);
+                                locations.add(new Location(locationObj.getDouble("long"),
+                                        locationObj.getDouble("lat"), locationObj.getLong("time")));
+                            }
+                            users.add(new User(name, Sharing.valueOf(userObj.getString("sharing")), locations));
+                        }
+                        ArrayList<Group> newGroups = new ArrayList<>(groups.getValue());
+                        Group oldGroup = null;
+                        for (Group g : newGroups)
+                            if (g.id.equals(id)) {
+                                oldGroup = g;
+                                break;
+                            }
+                        if (oldGroup != null)
+                            newGroups.remove(oldGroup);
+                        newGroups.add(new Group(id, groupObj.getString("name"), users));
+                        groups.setValue(newGroups);
+                    } catch (JSONException e) {
+                        Log.e("GroupParsing", "Failed to parse group", e);
+                    }
+                },
+                error -> Log.e("GroupRequest", "Failed to get group", error),
+                Helpers.getAuth(getApplication().getApplicationContext())));
     }
 
     public MutableLiveData<List<Group>> getGroups() {
@@ -94,5 +148,9 @@ public class LocationSharingViewModel extends AndroidViewModel {
 
     public MutableLiveData<Map<String, User>> getFriends() {
         return friends;
+    }
+
+    public MutableLiveData<Location> getLocation() {
+        return location;
     }
 }

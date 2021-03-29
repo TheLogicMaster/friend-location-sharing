@@ -29,19 +29,22 @@ import java.util.TimerTask;
 
 public class GroupListFragment extends Fragment {
 
-    private RequestQueue queue;
     private SwipeRefreshLayout swipeRefresh;
     private RecyclerView recyclerView;
     private GroupRecyclerViewAdapter adapter;
     private Timer timer;
+    private LocationSharingViewModel viewModel;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_group_list, container, false);
 
-        LocationSharingViewModel viewModel = new ViewModelProvider(requireActivity()).get(LocationSharingViewModel.class);
-
-        queue = Volley.newRequestQueue(requireContext());
+        viewModel = new ViewModelProvider(requireActivity()).get(LocationSharingViewModel.class);
+        viewModel.getGroups().observe(getViewLifecycleOwner(), groups -> {
+            adapter.setGroups(groups);
+            recyclerView.scrollToPosition(adapter.getItemCount() - 1);
+            swipeRefresh.setRefreshing(false);
+        });
 
         swipeRefresh = view.findViewById(R.id.refresh);
         swipeRefresh.setOnRefreshListener(this::refresh);
@@ -62,40 +65,16 @@ public class GroupListFragment extends Fragment {
     }
 
     private void refresh() {
-        queue.start();
-        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "groups", null,
-                response -> {
-                    try {
-                        JSONArray groupArray = response.getJSONArray("groups");
-                        ArrayList<Group> groups = new ArrayList<>();
-                        for (int i = 0; i < groupArray.length(); i++) {
-                            JSONObject groupObj = groupArray.getJSONObject(i);
-                            JSONObject usersObj = groupObj.getJSONObject("users");
-                            ArrayList<User> users = new ArrayList<>();
-                            for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
-                                String name = it.next();
-                                JSONObject userObj = usersObj.getJSONObject(name);
-                                users.add(new User(name, Sharing.valueOf(userObj.getString("sharing"))));
-                            }
-                            groups.add(new Group(groupObj.getString("id"), groupObj.getString("name"), users));
-                        }
-                        adapter.setGroups(groups);
-                        recyclerView.scrollToPosition(adapter.getItemCount() - 1);
-                    } catch (JSONException e) {
-                        Log.e("GroupsParsing", "Failed to parse groups", e);
-                    }
-                    swipeRefresh.setRefreshing(false);
-                },
-                error -> {
-                    Log.e("GroupsRequest", "Failed to get groups", error);
-                    swipeRefresh.setRefreshing(false);
-                }, Helpers.getAuth(requireContext())));
+        viewModel.updateGroups(e -> {
+            Log.e("GroupsRequest", "Failed to get update groups", e);
+            swipeRefresh.setRefreshing(false);
+        });
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        queue.start();
+
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -108,7 +87,7 @@ public class GroupListFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        queue.stop();
+
         if (timer != null)
             timer.cancel();
     }

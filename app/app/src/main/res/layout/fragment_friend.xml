@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".FriendFragment">
 
     <LinearLayout
@@ -49,6 +50,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/show_history"
+            android:layout_gravity="center"
+            android:text="Show Friend History"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
         <Spinner
             android:id="@+id/sharing_spinner"
             android:layout_gravity="center"
@@ -66,5 +74,13 @@
             android:layout_height="wrap_content"/>
 
     </LinearLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/reset_zoom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="@dimen/fab_margin"
+        app:srcCompat="@android:drawable/ic_menu_zoom" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

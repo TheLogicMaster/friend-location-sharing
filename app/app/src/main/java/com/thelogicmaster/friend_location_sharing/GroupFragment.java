@@ -3,6 +3,7 @@ package com.thelogicmaster.friend_location_sharing;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -29,10 +30,24 @@ public class GroupFragment extends Fragment {
     private Timer timer;
     private String id;
     private TextView nameText;
+    private LocationSharingViewModel viewModel;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_group, container, false);
+
+        viewModel = new ViewModelProvider(requireActivity()).get(LocationSharingViewModel.class);
+        viewModel.getGroups().observe(getViewLifecycleOwner(), groups -> {
+            Group group = null;
+            for (Group g: groups)
+                if (g.id.equals(id)) {
+                    group = g;
+                    break;
+                }
+            if (group == null)
+                return;
+            nameText.setText(group.name);
+        });
 
         queue = Volley.newRequestQueue(requireContext());
 
@@ -44,34 +59,7 @@ public class GroupFragment extends Fragment {
     }
 
     private void refresh() {
-        queue.start();
-
-        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "group?id=" + id, null,
-                groupObj -> {
-                    try {
-                        JSONObject usersObj = groupObj.getJSONObject("users");
-                        ArrayList<User> users = new ArrayList<>();
-                        for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
-                            String name = it.next();
-                            JSONObject userObj = usersObj.getJSONObject(name);
-                            ArrayList<Location> locations = new ArrayList<>();
-                            JSONArray locationsArray = userObj.getJSONArray("locations");
-                            for (int i = 0; i < locationsArray.length(); i++) {
-                                JSONObject locationObj = locationsArray.getJSONObject(i);
-                                locations.add(new Location(locationObj.getDouble("long"),
-                                        locationObj.getDouble("lat"), locationObj.getLong("time")));
-                            }
-                            users.add(new User(name, Sharing.valueOf(userObj.getString("sharing")), locations));
-                        }
-                        // Is group object even needed here?
-                        Group group = new Group(groupObj.getString("id"), groupObj.getString("name"), users);
-                        nameText.setText(group.name);
-                    } catch (JSONException e) {
-                        Log.e("GroupParsing", "Failed to parse group", e);
-                    }
-                },
-                error -> Log.e("GroupRequest", "Failed to get group", error),
-                Helpers.getAuth(requireContext())));
+        viewModel.updateGroup(id);
     }
 
     @Override

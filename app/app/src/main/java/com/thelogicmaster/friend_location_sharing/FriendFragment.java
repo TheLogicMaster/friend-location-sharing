@@ -5,7 +5,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
 
-import androidx.appcompat.widget.AppCompatSpinner;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
@@ -19,21 +19,20 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -50,11 +49,13 @@ public class FriendFragment extends Fragment {
     private Timer timer;
     private String name;
     private TextView nameText, locationText;
-    private GoogleMap googleMap;
+    private GoogleMap map;
     private Polyline history;
-    private Marker marker;
+    private Marker friendMarker, userMarker;
     private boolean spinnerInitialized;
     private LocationSharingViewModel viewModel;
+    private SwitchCompat historySwitch;
+    private User friend;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -64,9 +65,10 @@ public class FriendFragment extends Fragment {
         viewModel.getFriends().observe(getViewLifecycleOwner(), friends -> {
             if (!friends.containsKey(name))
                 return;
-
-            updateUI(friends.get(name));
+            friend = friends.get(name);
+            updateUI();
         });
+        viewModel.getLocation().observe(getViewLifecycleOwner(), location -> updateUI());
 
         queue = Volley.newRequestQueue(requireContext());
 
@@ -74,6 +76,14 @@ public class FriendFragment extends Fragment {
 
         nameText = view.findViewById(R.id.friend_name);
         locationText = view.findViewById(R.id.location_info);
+
+        view.findViewById(R.id.reset_zoom).setOnClickListener(v -> resetZoom());
+
+        historySwitch = view.findViewById(R.id.show_history);
+        historySwitch.setOnCheckedChangeListener((v, checked) -> {
+            if (history != null)
+                history.setVisible(checked);
+        });
 
         ((Spinner) view.findViewById(R.id.sharing_spinner)).setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -98,12 +108,7 @@ public class FriendFragment extends Fragment {
                         e -> {
                             Toast.makeText(requireContext(), "Failed to update friend location sharing", Toast.LENGTH_LONG).show();
                             Log.e("FriendSharing", "Failed to update friend location sharing", e);
-                        }, Helpers.getAuth(requireContext())) {
-                    @Override
-                    protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
-                        return Response.success(null, null);
-                    }
-                });
+                        }, Helpers.getAuth(requireContext()), true));
             }
 
             @Override
@@ -122,7 +127,7 @@ public class FriendFragment extends Fragment {
 
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null)
-            mapFragment.getMapAsync(googleMap -> this.googleMap = googleMap);
+            mapFragment.getMapAsync(googleMap -> this.map = googleMap);
 
         return view;
     }
@@ -131,21 +136,50 @@ public class FriendFragment extends Fragment {
         viewModel.updateFriend(name);
     }
 
-    private void updateUI(User friend) {
-        if (googleMap != null && friend.locations.size() > 0) {
-            LatLng latLng = friend.locations.get(friend.locations.size() - 1).latLng;
+    private void updateUI() {
+        if (map != null) {
             ArrayList<LatLng> coordinates = new ArrayList<>();
             for (Location location : friend.locations)
                 coordinates.add(location.latLng);
+
             if (history == null) {
-                history = googleMap.addPolyline(new PolylineOptions());
-                marker = googleMap.addMarker(new MarkerOptions().position(latLng).title(friend.name));
-                googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                history = map.addPolyline(new PolylineOptions());
                 history.setColor(Color.RED);
+                friendMarker = map.addMarker(new MarkerOptions()
+                        .position(new LatLng(0, 0))
+                        .title(friend.name)
+                        .visible(false)
+                );
+                userMarker = map.addMarker(new MarkerOptions()
+                        .title(Helpers.getUsername(requireContext()))
+                        .position(new LatLng(0, 0))
+                        .visible(false)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                );
             }
+
+            if (friend.locations.size() > 0) {
+                LatLng latLng = friend.locations.get(friend.locations.size() - 1).latLng;
+                boolean init = friendMarker.getPosition().latitude == 0
+                        && friendMarker.getPosition().longitude == 0;
+                friendMarker.setPosition(latLng);
+                if (init)
+                    resetZoom();
+                friendMarker.setVisible(true);
+            }
+
+            Location userLocation = viewModel.getLocation().getValue();
+            if (userLocation != null) {
+                userMarker.setPosition(viewModel.getLocation().getValue().latLng);
+                userMarker.setVisible(true);
+            }
+
+            history.setVisible(historySwitch.isChecked());
             history.setPoints(coordinates);
         }
+
         nameText.setText(friend.name);
+
         if (friend.sharing == Sharing.OFF)
             locationText.setText("Location Disabled");
         else if (friend.locations.size() > 0) {
@@ -165,6 +199,13 @@ public class FriendFragment extends Fragment {
                 }).start();
             }
         }
+    }
+
+    private void resetZoom() {
+        if (map == null || (friendMarker.getPosition().latitude == 0 && friendMarker.getPosition().longitude == 0))
+            return;
+
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(friendMarker.getPosition(), 10), 2000, null);
     }
 
     @Override
