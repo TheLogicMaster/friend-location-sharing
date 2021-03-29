@@ -63,6 +63,11 @@
         <argument
             android:name="id"
             app:argType="string" />
+        <action
+            android:id="@+id/action_groupFragment_to_groupsListFragment"
+            app:destination="@id/groupsListFragment"
+            app:popUpTo="@id/groupsListFragment"
+            app:popUpToInclusive="true" />
     </fragment>
     <fragment
         android:id="@+id/friendFragment"

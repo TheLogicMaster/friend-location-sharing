@@ -171,6 +171,20 @@ def create_group():
     return 'OK'
 
 
+@app.route('/deleteGroup', methods=['post'])
+@auth.login_required
+def delete_group():
+    group = None
+    for g in data['groups']:
+        if g['id'] == request.args.get('id'):
+            group = g
+    if group is None:
+        return 'No such group', 404
+    data['groups'].remove(group)
+    save_data()
+    return 'OK'
+
+
 @app.route('/friends')
 @auth.login_required
 def get_friends():
@@ -181,6 +195,10 @@ def get_friends():
 @auth.login_required
 def get_friend():
     name = request.args.get('name')
+    if name not in data['users']:
+        return 'No such user', 404
+    if auth.current_user() not in data['users'][name]['friends']:
+        return 'Not friends', 401
     friend = {
         'name': name,
         'sharing': data['users'][name]['friends'][auth.current_user()]['sharing']
@@ -200,7 +218,7 @@ def get_friend():
 def add_friend():
     username = request.args.get('username')
     if username not in data['users']:
-        return 'No such friend exists', 404
+        return 'No such user exists', 404
     if username in data['users'][auth.current_user()]['friends']:
         return 'Friend already exists', 200
     data['users'][auth.current_user()]['friends'][username] = {
@@ -210,12 +228,36 @@ def add_friend():
     return 'OK'
 
 
+@app.route('/groupSharing', methods=['post'])
+@auth.login_required
+def update_group_sharing():
+    group = None
+    for g in data['groups']:
+        if g['id'] == request.json['id']:
+            group = g
+    if group is None:
+        return 'No such group', 404
+    group['users'][auth.current_user()]['sharing'] = request.json['sharing']
+    save_data()
+    return 'OK'
+
+
 @app.route('/friendSharing', methods=['post'])
 @auth.login_required
 def update_friend_sharing():
+    if request.json['friend'] not in data['users'][auth.current_user()]['friends']:
+        return 'No such friend', 404
     data['users'][auth.current_user()]['friends'][request.json['friend']]['sharing'] = request.json['sharing']
     save_data()
     return 'OK'
+
+
+@app.route('/friendSharing')
+@auth.login_required
+def get_friend_sharing():
+    if request.args.get('friend') not in data['users'][auth.current_user()]['friends']:
+        return 'No such friend', 404
+    return data['users'][auth.current_user()]['friends'][request.args.get('friend')]['sharing']
 
 
 @app.route('/deleteFriend', methods=['post'])
@@ -229,6 +271,8 @@ def delete_friend():
 @app.route('/location')
 @auth.login_required
 def get_location():
+    if auth.current_user() not in data['users'][request.json['user']]['friends']:
+        return 'Not friends', 401
     if data['users'][request.json['user']]['sharing'] == 'OFF' or \
             data['users'][request.json['user']]['friends'][auth.current_user()]['sharing'] == 'OFF':
         return 'User not sharing location', 401
@@ -245,26 +289,35 @@ def get_location_history():
     return data['users'][request.json['user']]['locations']
 
 
+@app.route('/updateSharing', methods=['post'])
+@auth.login_required
+def update_sharing():
+    data['users'][auth.current_user()]['sharing'] = request.args.get('sharing')
+    save_data()
+    return 'OK'
+
+
+@app.route('/sharing')
+@auth.login_required
+def get_sharing():
+    return data['users'][auth.current_user()]['sharing']
+
+
 @app.route('/updateLocation', methods=['post'])
 @auth.login_required
 def update_location():
-    if 'long' in request.json and 'lat' in request.json:
-        location = {
-            'time': int(datetime.now().timestamp()),
-            'long': request.json['long'],
-            'lat': request.json['lat']
-        }
-        locations = data['users'][auth.current_user()]['locations']
+    location = {
+        'time': int(datetime.now().timestamp()),
+        'long': request.json['long'],
+        'lat': request.json['lat']
+    }
+    locations = data['users'][auth.current_user()]['locations']
 
-        # Save the last location per minute
-        # noinspection PyTypeChecker
-        if len(locations) > 0 and int(locations[len(locations) - 1]['time'] / 60) == int(location['time'] / 60):
-            locations.pop()
-        locations.append(location)
-
-    if 'sharing' in request.json:
-        data['users'][auth.current_user()]['sharing'] = request.json['sharing']
-
+    # Save the last location per minute
+    # noinspection PyTypeChecker
+    if len(locations) > 0 and int(locations[len(locations) - 1]['time'] / 60) == int(location['time'] / 60):
+        locations.pop()
+    locations.append(location)
     save_data()
     return 'OK'
 

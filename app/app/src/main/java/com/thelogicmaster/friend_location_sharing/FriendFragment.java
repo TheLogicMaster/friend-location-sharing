@@ -38,6 +38,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Timer;
@@ -52,10 +53,10 @@ public class FriendFragment extends Fragment {
     private GoogleMap map;
     private Polyline history;
     private Marker friendMarker, userMarker;
-    private boolean spinnerInitialized;
     private LocationSharingViewModel viewModel;
     private SwitchCompat historySwitch;
     private User friend;
+    private Spinner sharingSpinner;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -85,15 +86,14 @@ public class FriendFragment extends Fragment {
                 history.setVisible(checked);
         });
 
-        ((Spinner) view.findViewById(R.id.sharing_spinner)).setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        sharingSpinner = view.findViewById(R.id.sharing_spinner);
+        sharingSpinner.setEnabled(false);
+        sharingSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (!spinnerInitialized) { // Skip first event
-                    spinnerInitialized = true;
+                if (!sharingSpinner.isEnabled())
                     return;
-                }
                 JSONObject data = new JSONObject();
-                Log.e("sharing", Sharing.values()[position].name());
                 try {
                     data.put("sharing", Sharing.values()[position].name());
                     data.put("friend", name);
@@ -122,18 +122,25 @@ public class FriendFragment extends Fragment {
                         response -> Navigation.findNavController(view).navigate(R.id.action_friendFragment_to_friendsListFragment),
                         e -> {
                             Toast.makeText(requireContext(), "Failed to remove friend", Toast.LENGTH_LONG).show();
-                            Log.e("FriendSharing", "Failed to delete friend", e);
+                            Log.e("DeleteFriend", "Failed to delete friend", e);
                         }, Helpers.getAuth(requireContext()))));
 
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null)
-            mapFragment.getMapAsync(googleMap -> this.map = googleMap);
+            mapFragment.getMapAsync(googleMap -> map = googleMap);
 
         return view;
     }
 
     private void refresh() {
         viewModel.updateFriend(name);
+
+        queue.add(new AuthStringRequest(Request.Method.GET, Helpers.BASE_URL +
+                "friendSharing?friend=" + name, response -> {
+            sharingSpinner.setSelection(Sharing.valueOf(response).ordinal(), false);
+            sharingSpinner.setEnabled(true);
+        }, error -> Log.e("FriendSharing", "Failed to get friend sharing settings", error),
+                Helpers.getAuth(getContext())));
     }
 
     private void updateUI() {
@@ -165,7 +172,7 @@ public class FriendFragment extends Fragment {
                 friendMarker.setPosition(latLng);
                 if (init)
                     resetZoom();
-                friendMarker.setVisible(true);
+                friendMarker.setVisible(friend.sharing != Sharing.OFF);
             }
 
             Location userLocation = viewModel.getLocation().getValue();

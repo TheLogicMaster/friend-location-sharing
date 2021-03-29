@@ -50,7 +50,11 @@ public class GroupListFragment extends Fragment {
         swipeRefresh.setOnRefreshListener(this::refresh);
 
         view.findViewById(R.id.add_group).setOnClickListener(
-                v -> (new AddGroupDialog(new ArrayList<>(viewModel.getFriends().getValue().values()))).show(getChildFragmentManager(), "AddGroup"));
+                v -> {
+                    if (viewModel.getFriends().getValue() == null)
+                        return;
+                    (new AddGroupDialog(new ArrayList<>(viewModel.getFriends().getValue().values()))).show(getChildFragmentManager(), "AddGroup");
+                });
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
@@ -65,6 +69,7 @@ public class GroupListFragment extends Fragment {
     }
 
     private void refresh() {
+        viewModel.updateFriends(null);
         viewModel.updateGroups(e -> {
             Log.e("GroupsRequest", "Failed to get update groups", e);
             swipeRefresh.setRefreshing(false);
@@ -75,6 +80,7 @@ public class GroupListFragment extends Fragment {
     public void onResume() {
         super.onResume();
 
+        viewModel.updateFriends(null);
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
