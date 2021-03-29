@@ -243,7 +243,7 @@ public class GroupFragment extends Fragment {
     }
 
     private void resetZoom() {
-        if (map == null || markers.size() == 0)
+        if (map == null || markers.size() == 0 || getContext() == null)
             return;
 
         LatLngBounds.Builder builder = new LatLngBounds.Builder();

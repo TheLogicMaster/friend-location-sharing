@@ -1,5 +1,6 @@
 package com.thelogicmaster.friend_location_sharing;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -46,6 +47,7 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
             Chip chip = new Chip(getContext());
             chip.setText(friend.name);
             chip.setCheckable(true);
+            chip.setBackgroundColor(Color.DKGRAY);
             chips.add(chip);
             chipGroup.addView(chip);
         }
