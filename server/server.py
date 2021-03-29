@@ -168,7 +168,7 @@ def create_group():
         'users': users
     })
     save_data()
-    return 'OK', 200
+    return 'OK'
 
 
 @app.route('/friends')
@@ -183,7 +183,7 @@ def get_friend():
     name = request.args.get('name')
     friend = {
         'name': name,
-        'sharing': data['users'][auth.current_user()]['friends'][name]['sharing']
+        'sharing': data['users'][name]['friends'][auth.current_user()]['sharing']
     }
     locations = data['users'][name]['locations']
     if friend['sharing'] == 'ALL' and data['users'][name]['sharing'] == 'ALL':
@@ -199,13 +199,31 @@ def get_friend():
 @auth.login_required
 def add_friend():
     username = request.args.get('username')
+    if username not in data['users']:
+        return 'No such friend exists', 404
     if username in data['users'][auth.current_user()]['friends']:
         return 'Friend already exists', 200
     data['users'][auth.current_user()]['friends'][username] = {
         'sharing': 'ALL'
     }
     save_data()
-    return 'OK', 200
+    return 'OK'
+
+
+@app.route('/friendSharing', methods=['post'])
+@auth.login_required
+def update_friend_sharing():
+    data['users'][auth.current_user()]['friends'][request.json['friend']]['sharing'] = request.json['sharing']
+    save_data()
+    return 'OK'
+
+
+@app.route('/deleteFriend', methods=['post'])
+@auth.login_required
+def delete_friend():
+    data['users'][auth.current_user()]['friends'].pop(request.args.get('friend'), None)
+    save_data()
+    return 'OK'
 
 
 @app.route('/location')

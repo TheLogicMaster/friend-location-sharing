@@ -9,7 +9,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -51,7 +50,7 @@ public class GroupFragment extends Fragment {
                 groupObj -> {
                     try {
                         JSONObject usersObj = groupObj.getJSONObject("users");
-                        ArrayList<Friend> users = new ArrayList<>();
+                        ArrayList<User> users = new ArrayList<>();
                         for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
                             String name = it.next();
                             JSONObject userObj = usersObj.getJSONObject(name);
@@ -62,7 +61,7 @@ public class GroupFragment extends Fragment {
                                 locations.add(new Location(locationObj.getDouble("long"),
                                         locationObj.getDouble("lat"), locationObj.getLong("time")));
                             }
-                            users.add(new Friend(name, Sharing.valueOf(userObj.getString("sharing")), locations));
+                            users.add(new User(name, Sharing.valueOf(userObj.getString("sharing")), locations));
                         }
                         // Is group object even needed here?
                         Group group = new Group(groupObj.getString("id"), groupObj.getString("name"), users);
@@ -72,7 +71,7 @@ public class GroupFragment extends Fragment {
                     }
                 },
                 error -> Log.e("GroupRequest", "Failed to get group", error),
-                Helpers.getAuth(requireActivity())));
+                Helpers.getAuth(requireContext())));
     }
 
     @Override

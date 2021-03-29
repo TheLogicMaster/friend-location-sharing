@@ -12,16 +12,23 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationAvailability;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 
+import android.os.Looper;
 import android.util.Log;
 
 import android.widget.Toast;
@@ -36,17 +43,21 @@ import java.util.TimerTask;
 public class MainActivity extends AppCompatActivity {
 
     private RequestQueue queue;
-    private Timer timer;
     private boolean autoLocation;
     private String sharing;
     private SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private FusedLocationProviderClient locationClient;
+    private LocationCallback locationCallback;
+    private LocationRequest locationRequest;
     private Location location;
+    private LocationSharingViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        viewModel = new ViewModelProvider(this).get(LocationSharingViewModel.class);
 
         queue = Volley.newRequestQueue(this);
         locationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -54,6 +65,19 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         autoLocation = prefs.getBoolean("autoLocation", false);
         sharing = prefs.getString("sharing", "OFF");
+
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(3000);
+
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                updateLocation(false);
+                location = locationResult.getLastLocation();
+                viewModel.updateLocation(location);
+            }
+        };
 
         prefsListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
@@ -74,8 +98,9 @@ public class MainActivity extends AppCompatActivity {
     public void onPause() {
         super.onPause();
         queue.stop();
-        if (timer != null)
-            timer.cancel();
+
+        locationClient.removeLocationUpdates(locationCallback);
+
         PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(prefsListener);
     }
 
@@ -85,13 +110,7 @@ public class MainActivity extends AppCompatActivity {
 
         queue.start();
 
-        timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                updateLocation(false);
-            }
-        }, 0, 5000);
+        locationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
 
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(prefsListener);
     }
@@ -113,22 +132,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            this.location = location;
-        });
-
-        JSONObject data = new JSONObject();
-        try {
-            if (location != null) {
-                data.put("long", location.getLongitude());
-                data.put("lat", location.getLatitude());
+            JSONObject data = new JSONObject();
+            try {
+                if (location != null) {
+                    data.put("long", location.getLongitude());
+                    data.put("lat", location.getLatitude());
+                }
+                data.put("sharing", sharing);
+            } catch (JSONException e) {
+                Log.e("UpdateLocation", "Failed to create location data object", e);
+                return;
             }
-            data.put("sharing", sharing);
-        } catch (JSONException e) {
-            Log.e("UpdateLocation", "Failed to create location data object", e);
-            return;
-        }
 
-        sendLocationData(data, !manual);
+            sendLocationData(data, !manual);
+        });
     }
 
     private void updateSharing() {
@@ -152,12 +169,7 @@ public class MainActivity extends AppCompatActivity {
                     if (!silent)
                         Toast.makeText(this, "Failed to update location", Toast.LENGTH_SHORT).show();
                     Log.e("UpdateLocation", "Failed", error);
-                }, Helpers.getAuth(this)) {
-            @Override
-            protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
-                return Response.success(null, null);
-            }
-        });
+                }, Helpers.getAuth(this), true));
     }
 
     @Override

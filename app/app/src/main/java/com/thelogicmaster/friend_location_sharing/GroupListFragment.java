@@ -1,6 +1,5 @@
 package com.thelogicmaster.friend_location_sharing;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,7 +23,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -40,19 +39,15 @@ public class GroupListFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_group_list, container, false);
 
+        LocationSharingViewModel viewModel = new ViewModelProvider(requireActivity()).get(LocationSharingViewModel.class);
+
         queue = Volley.newRequestQueue(requireContext());
 
         swipeRefresh = view.findViewById(R.id.refresh);
         swipeRefresh.setOnRefreshListener(this::refresh);
 
         view.findViewById(R.id.add_group).setOnClickListener(
-                v -> queue.add(new FriendsListRequest(getActivity(),
-                friends -> (new AddGroupDialog(friends)).show(getChildFragmentManager(), "AddGroup"),
-                e -> {
-                    Log.e("AddGroup", "Failed to get friends", e);
-                    Toast.makeText(requireContext(), "Failed to get friends list", Toast.LENGTH_SHORT).show();
-                })
-        ));
+                v -> (new AddGroupDialog(new ArrayList<>(viewModel.getFriends().getValue().values()))).show(getChildFragmentManager(), "AddGroup"));
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
@@ -76,11 +71,11 @@ public class GroupListFragment extends Fragment {
                         for (int i = 0; i < groupArray.length(); i++) {
                             JSONObject groupObj = groupArray.getJSONObject(i);
                             JSONObject usersObj = groupObj.getJSONObject("users");
-                            ArrayList<Friend> users = new ArrayList<>();
+                            ArrayList<User> users = new ArrayList<>();
                             for (Iterator<String> it = usersObj.keys(); it.hasNext(); ) {
                                 String name = it.next();
                                 JSONObject userObj = usersObj.getJSONObject(name);
-                                users.add(new Friend(name, Sharing.valueOf(userObj.getString("sharing"))));
+                                users.add(new User(name, Sharing.valueOf(userObj.getString("sharing"))));
                             }
                             groups.add(new Group(groupObj.getString("id"), groupObj.getString("name"), users));
                         }
@@ -94,7 +89,7 @@ public class GroupListFragment extends Fragment {
                 error -> {
                     Log.e("GroupsRequest", "Failed to get groups", error);
                     swipeRefresh.setRefreshing(false);
-                }, Helpers.getAuth(requireActivity())));
+                }, Helpers.getAuth(requireContext())));
     }
 
     @Override

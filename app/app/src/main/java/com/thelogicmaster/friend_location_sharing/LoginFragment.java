@@ -54,7 +54,7 @@ public class LoginFragment extends Fragment {
                     error -> {
                         Log.e("Signup", "Failed to signup", error);
                         Toast.makeText(getContext(), "Something went wrong", Toast.LENGTH_LONG).show();
-                    }, Helpers.getAuth(requireActivity())));
+                    }, Helpers.getAuth(requireContext())));
         });
 
         return view;

@@ -7,18 +7,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class FriendRecyclerViewAdapter extends RecyclerView.Adapter<FriendRecyclerViewAdapter.ViewHolder> {
 
-    private List<Friend> friends = new ArrayList<>();
+    private List<User> friends = new ArrayList<>();
     private final FriendClickListener listener;
 
     public FriendRecyclerViewAdapter(FriendClickListener listener) {
         this.listener = listener;
     }
 
+    @NotNull
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
@@ -38,7 +41,7 @@ public class FriendRecyclerViewAdapter extends RecyclerView.Adapter<FriendRecycl
         return friends.size();
     }
 
-    public void setFriends(List<Friend> friends) {
+    public void setFriends(List<User> friends) {
         this.friends = friends;
         notifyDataSetChanged();
     }
@@ -46,7 +49,7 @@ public class FriendRecyclerViewAdapter extends RecyclerView.Adapter<FriendRecycl
     public class ViewHolder extends RecyclerView.ViewHolder {
         public final View view;
         public final TextView nameView;
-        public Friend friend;
+        public User friend;
 
         public ViewHolder(View view) {
             super(view);
@@ -62,6 +65,6 @@ public class FriendRecyclerViewAdapter extends RecyclerView.Adapter<FriendRecycl
 
     public interface FriendClickListener {
 
-        void onClick(Friend friend);
+        void onClick(User friend);
     }
 }

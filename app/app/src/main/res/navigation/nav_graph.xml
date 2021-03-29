@@ -72,5 +72,10 @@
         <argument
             android:name="name"
             app:argType="string" />
+        <action
+            android:id="@+id/action_friendFragment_to_friendsListFragment"
+            app:destination="@id/friendsListFragment"
+            app:popUpTo="@id/friendsListFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 </navigation>

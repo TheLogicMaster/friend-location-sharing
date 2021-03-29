@@ -11,11 +11,6 @@
         android:layout_marginBottom="80dp"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/friend_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
         <androidx.fragment.app.FragmentContainerView
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:id="@+id/map"
@@ -23,6 +18,53 @@
             android:layout_height="wrap_content"/>
     </LinearLayout>
 
-    <include layout="@layout/bottom_sheet_friend" />
+    <LinearLayout xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/friend_bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="340dp"
+        android:background="@android:color/darker_gray"
+        android:orientation="vertical"
+        app:behavior_hideable="false"
+        app:behavior_skipCollapsed="false"
+        app:behavior_peekHeight="80dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:src="@drawable/hamburger"
+            android:layout_gravity="center"/>
+
+        <TextView
+            android:id="@+id/friend_name"
+            android:layout_marginBottom="10dp"
+            android:layout_gravity="center|bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/location_info"
+            android:layout_marginBottom="20dp"
+            android:layout_gravity="center|top"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <Spinner
+            android:id="@+id/sharing_spinner"
+            android:layout_gravity="center"
+            android:entries="@array/sharing_entries"
+            android:entryValues="@array/sharing_values"
+            android:layout_marginBottom="15dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:text="Remove Friend"
+            android:id="@+id/remove_friend_button"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

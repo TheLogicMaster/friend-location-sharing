@@ -28,9 +28,9 @@ import java.util.List;
 
 public class AddGroupDialog extends BottomSheetDialogFragment {
 
-    private final List<Friend> friends;
+    private final List<User> friends;
 
-    public AddGroupDialog(List<Friend> friends) {
+    public AddGroupDialog(List<User> friends) {
         this.friends = friends;
     }
 
@@ -42,7 +42,7 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
 
         ChipGroup chipGroup = view.findViewById(R.id.friends);
         final ArrayList<Chip> chips = new ArrayList<>();
-        for (Friend friend: friends) {
+        for (User friend: friends) {
             Chip chip = new Chip(getContext());
             chip.setText(friend.name);
             chip.setCheckable(true);
@@ -72,7 +72,7 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
                     error -> {
                         Log.e("FriendsRequest", "Failed to create group", error);
                         Toast.makeText(requireContext(), "Failed to create group", Toast.LENGTH_SHORT).show();
-                    }, Helpers.getAuth(requireActivity())) {
+                    }, Helpers.getAuth(requireContext())) {
                 @Override
                 protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
                     return Response.success(null, null);

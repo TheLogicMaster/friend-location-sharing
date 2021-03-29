@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -36,10 +37,18 @@ public class FriendListFragment extends Fragment {
     private RecyclerView recyclerView;
     private FriendRecyclerViewAdapter adapter;
     private Timer timer;
+    private LocationSharingViewModel viewModel;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_friend_list, container, false);
+
+        viewModel = new ViewModelProvider(requireActivity()).get(LocationSharingViewModel.class);
+        viewModel.getFriends().observe(getViewLifecycleOwner(), friends -> {
+            adapter.setFriends(new ArrayList<>(friends.values()));
+            recyclerView.scrollToPosition(adapter.getItemCount() - 1);
+            swipeRefresh.setRefreshing(false);
+        });
 
         queue = Volley.newRequestQueue(requireContext());
 
@@ -57,7 +66,7 @@ public class FriendListFragment extends Fragment {
                         error -> {
                             Log.e("FriendsRequest", "Failed to add friend", error);
                             Toast.makeText(requireContext(), "Failed to add friend", Toast.LENGTH_SHORT).show();
-                        }, Helpers.getAuth(requireActivity())));
+                        }, Helpers.getAuth(requireContext())));
         });
 
         recyclerView = view.findViewById(R.id.list);
@@ -73,14 +82,10 @@ public class FriendListFragment extends Fragment {
     }
 
     private void refresh() {
-        queue.start();
-        queue.add(new FriendsListRequest(getActivity(), friends -> {
-            adapter.setFriends(friends);
-            recyclerView.scrollToPosition(adapter.getItemCount() - 1);
-        }, error -> {
+        viewModel.updateFriends(error -> {
             Log.e("FriendsRequest", "Failed to get friends", error);
             swipeRefresh.setRefreshing(false);
-        }));
+        });
     }
 
     @Override
