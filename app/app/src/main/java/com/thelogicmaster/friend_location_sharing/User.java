@@ -9,6 +9,10 @@ public class User {
     public final Sharing sharing;
     public final List<Location> locations;
 
+    public User(String name) {
+        this(name, Sharing.OFF, new ArrayList<>());
+    }
+
     public User(String name, Sharing sharing) {
         this(name, sharing, new ArrayList<>());
     }

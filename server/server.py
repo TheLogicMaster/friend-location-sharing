@@ -68,6 +68,14 @@ data = {
                 }
             }
         }
+    ],
+    'chats': [
+        {
+            'name': 'Chat 1',
+            'id': '8dd60a04-7a0a-4b61-943a-577d5eb384d4',
+            'users': ['user1', 'user2', 'user3'],
+            'messages': []
+        }
     ]
 }
 
@@ -128,6 +136,7 @@ def get_groups():
     return {'groups': groups}
 
 
+# noinspection PyTypeChecker
 @app.route('/group')
 @auth.login_required
 def get_group():
@@ -181,6 +190,78 @@ def delete_group():
     if group is None:
         return 'No such group', 404
     data['groups'].remove(group)
+    save_data()
+    return 'OK'
+
+
+@app.route('/chats')
+@auth.login_required
+def get_chats():
+    chats = []
+    for chat in data['chats']:
+        for user in chat['users']:
+            if auth.current_user() == user:
+                chats.append(copy.copy(chat))
+                del chats[len(chats) - 1]['messages']
+                break
+    return {'chats': chats}
+
+
+@app.route('/chat')
+@auth.login_required
+def get_chat():
+    for chat in data['chats']:
+        if chat['id'] == request.args.get('id'):
+            return chat
+    return 'No such chat', 404
+
+
+@app.route('/createChat', methods=['post'])
+@auth.login_required
+def create_chat():
+    users = request.json['users']
+    if auth.current_user() not in users:
+        users.append(auth.current_user())
+    data['chats'].append({
+        'name': request.json['name'],
+        'id': str(uuid.uuid4()),
+        'users': users,
+        'messages': []
+    })
+    save_data()
+    return 'OK'
+
+
+@app.route('/deleteChat', methods=['post'])
+@auth.login_required
+def delete_chat():
+    for c in data['chats']:
+        if c['id'] == request.args.get('id'):
+            chat = c
+            break
+    else:
+        return 'No such chat', 404
+    data['chats'].remove(chat)
+    save_data()
+    return 'OK'
+
+
+@app.route('/sendMessage', methods=['post'])
+@auth.login_required
+def send_message():
+    for c in data['chats']:
+        if c['id'] == request.json['id']:
+            chat = c
+            break
+    else:
+        return 'No such chat', 404
+    # noinspection PyUnresolvedReferences
+    chat['messages'].append({
+        'type': request.json['type'],
+        'content': request.json['content'],
+        'user': auth.current_user(),
+        'id': str(uuid.uuid4())
+    })
     save_data()
     return 'OK'
 

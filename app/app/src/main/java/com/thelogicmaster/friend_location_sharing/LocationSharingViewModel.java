@@ -19,6 +19,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -28,6 +29,7 @@ public class LocationSharingViewModel extends AndroidViewModel {
 
     private final MutableLiveData<List<Group>> groups = new MutableLiveData<>();
     private final MutableLiveData<Map<String, User>> friends = new MutableLiveData<>();
+    private final MutableLiveData<List<Chat>> chats = new MutableLiveData<>();
     private final MutableLiveData<Location> location = new MutableLiveData<>();
 
     private final RequestQueue queue;
@@ -140,6 +142,72 @@ public class LocationSharingViewModel extends AndroidViewModel {
                 },
                 error -> Log.e("GroupRequest", "Failed to get group", error),
                 Helpers.getAuth(getApplication().getApplicationContext())));
+    }
+
+    public void updateChats(Response.ErrorListener errorListener) {
+        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "chats", null,
+                response -> {
+                    try {
+                        JSONArray chatArray = response.getJSONArray("chats");
+                        ArrayList<Chat> chats = new ArrayList<>();
+                        for (int i = 0; i < chatArray.length(); i++) {
+                            JSONObject chatObj = chatArray.getJSONObject(i);
+                            JSONArray usersArray = chatObj.getJSONArray("users");
+                            ArrayList<User> users = new ArrayList<>();
+                            for (Object name : users)
+                                users.add(new User((String)name));
+                            chats.add(new Chat(chatObj.getString("id"), chatObj.getString("name"), users));
+                        }
+                        this.chats.setValue(chats);
+                    } catch (JSONException e) {
+                        errorListener.onErrorResponse(new VolleyError("Failed to parse chats", e));
+                    }
+                },
+                errorListener, Helpers.getAuth(getApplication().getApplicationContext())));
+    }
+
+    public void updateChat(String id) {
+        queue.add(new AuthJsonRequest(Request.Method.GET, Helpers.BASE_URL + "chat?id=" + id, null,
+                chatObj -> {
+                    try {
+                        JSONArray usersArray = chatObj.getJSONArray("users");
+                        ArrayList<User> users = new ArrayList<>();
+                        for (Object name : users)
+                            users.add(new User((String)name));
+
+                        JSONArray messagesArray = chatObj.getJSONArray("messages");
+                        ArrayList<Message> messages = new ArrayList<>();
+                        for (int i = 0; i < messagesArray.length(); i++) {
+                            JSONObject messageObj = messagesArray.getJSONObject(i);
+                            messages.add(new Message(
+                                    messageObj.getString("id"),
+                                    messageObj.getString("user"),
+                                    Message.MessageType.valueOf(messageObj.getString("type")),
+                                    messageObj.getString("content")
+                            ));
+                        }
+
+                        ArrayList<Chat> newChats = new ArrayList<>(chats.getValue());
+                        Chat oldChat = null;
+                        for (Chat c : newChats)
+                            if (c.id.equals(id)) {
+                                oldChat = c;
+                                break;
+                            }
+                        if (oldChat != null)
+                            newChats.remove(oldChat);
+                        newChats.add(new Chat(id, chatObj.getString("name"), users, messages));
+                        chats.setValue(newChats);
+                    } catch (JSONException | IllegalArgumentException e) {
+                        Log.e("ChatParsing", "Failed to parse chat", e);
+                    }
+                },
+                error -> Log.e("ChatRequest", "Failed to get chat", error),
+                Helpers.getAuth(getApplication().getApplicationContext())));
+    }
+
+    public MutableLiveData<List<Chat>> getChats() {
+        return chats;
     }
 
     public MutableLiveData<List<Group>> getGroups() {

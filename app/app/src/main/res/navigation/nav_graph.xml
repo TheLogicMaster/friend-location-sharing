@@ -32,6 +32,9 @@
         <action
             android:id="@+id/action_homeFragment_to_groupListFragment"
             app:destination="@id/groupsListFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_chatListFragment"
+            app:destination="@id/chatListFragment" />
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
@@ -81,6 +84,26 @@
             android:id="@+id/action_friendFragment_to_friendsListFragment"
             app:destination="@id/friendsListFragment"
             app:popUpTo="@id/friendsListFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/chatListFragment"
+        android:name="com.thelogicmaster.friend_location_sharing.ChatListFragment"
+        android:label="fragment_chat_list"
+        tools:layout="@layout/fragment_chat_list" >
+        <action
+            android:id="@+id/action_chatListFragment_to_chatFragment"
+            app:destination="@id/chatFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/chatFragment"
+        android:name="com.thelogicmaster.friend_location_sharing.ChatFragment"
+        android:label="fragment_chat"
+        tools:layout="@layout/fragment_chat" >
+        <action
+            android:id="@+id/action_chatFragment_to_chatListFragment"
+            app:destination="@id/chatListFragment"
+            app:popUpTo="@id/chatListFragment"
             app:popUpToInclusive="true" />
     </fragment>
 </navigation>

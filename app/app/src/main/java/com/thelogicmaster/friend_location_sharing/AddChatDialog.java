@@ -29,11 +29,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AddGroupDialog extends BottomSheetDialogFragment {
+public class AddChatDialog extends BottomSheetDialogFragment {
 
     private final List<User> friends;
 
-    public AddGroupDialog(List<User> friends) {
+    public AddChatDialog(List<User> friends) {
         this.friends = friends;
     }
 
@@ -41,7 +41,7 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
-        View view = inflater.inflate(R.layout.dialog_add_group, container, false);
+        View view = inflater.inflate(R.layout.dialog_add_chat, container, false);
 
         ChipGroup chipGroup = view.findViewById(R.id.friends);
         final ArrayList<Chip> chips = new ArrayList<>();
@@ -54,28 +54,28 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
             chipGroup.addView(chip);
         }
 
-        EditText groupName = view.findViewById(R.id.add_group_name);
+        EditText chatName = view.findViewById(R.id.add_chat_name);
 
-        view.findViewById(R.id.create_group).setOnClickListener(v -> {
+        view.findViewById(R.id.create_chat).setOnClickListener(v -> {
             JSONObject data = new JSONObject();
             try {
                 JSONArray users = new JSONArray();
                 for (Chip chip: chips)
                     if (chip.isChecked())
                         users.put(chip.getText());
-                if (users.length() == 0 || "".equals(groupName.getText().toString()))
+                if (users.length() == 0 || "".equals(chatName.getText().toString()))
                     return;
-                data.put("name", groupName.getText().toString());
+                data.put("name", chatName.getText().toString());
                 data.put("users", users);
             } catch (JSONException e) {
                 Log.e("AddChat", "Failed to create request data", e);
             }
             RequestQueue queue = Volley.newRequestQueue(requireContext());
-            queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "createGroup", data,
+            queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "createChat", data,
                     response -> {},
                     error -> {
-                        Log.e("CreateGroup", "Failed to create group", error);
-                        Toast.makeText(requireContext(), "Failed to create group", Toast.LENGTH_SHORT).show();
+                        Log.e("CreateChat", "Failed to create chat", error);
+                        Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();
                     }, Helpers.getAuth(requireContext())) {
                 @Override
                 protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
