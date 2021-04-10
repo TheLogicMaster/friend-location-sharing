@@ -1,6 +1,7 @@
 package com.thelogicmaster.friend_location_sharing;
 
 import android.Manifest;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -59,6 +60,7 @@ public class ChatFragment extends Fragment {
     private Timer timer;
     private LocationSharingViewModel viewModel;
     private RequestQueue queue;
+    private Uri imageUri;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -97,7 +99,6 @@ public class ChatFragment extends Fragment {
         view.findViewById(R.id.send_message).setOnClickListener(v -> {
             JSONObject data = new JSONObject();
             try {
-                JSONObject message = new JSONObject();
                 data.put("content", messageText.getText().toString());
                 data.put("type", Message.MessageType.TEXT);
                 data.put("id", id);
@@ -118,12 +119,20 @@ public class ChatFragment extends Fragment {
             });
         });
 
-        view.findViewById(R.id.send_file).setOnClickListener(v -> {
-            // Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            //startActivityForResult(takePicture, 69);//zero can be replaced with any action code (called requestCode)
+        view.findViewById(R.id.send_camera).setOnClickListener(v -> {
+            imageUri = getActivity().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, new ContentValues());
+            Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            takePicture.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+            startActivityForResult(takePicture, 69);
+        });
 
-            if ((ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) && (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED))
-                ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 100);
+        view.findViewById(R.id.send_image).setOnClickListener(v -> {
+            if ((ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                    && (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED))
+                ActivityCompat.requestPermissions(getActivity(), new String[]{
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                }, 100);
             else {
                 Intent pickPhoto = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(pickPhoto , 6969);
@@ -136,6 +145,12 @@ public class ChatFragment extends Fragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (resultCode == RESULT_OK) {
+            Uri uri;
+            if (requestCode == 6969)
+                uri = data.getData();
+            else
+                uri = imageUri;
+
             FileUploadRequest volleyMultipartRequest = new FileUploadRequest(Request.Method.POST, Helpers.BASE_URL + "sendFile?id=" + id + "&type=IMAGE",
                     response -> {},
                     error -> {
@@ -148,7 +163,7 @@ public class ChatFragment extends Fragment {
                     Map<String, DataPart> params = new HashMap<>();
                     try {
                         ByteArrayOutputStream output = new ByteArrayOutputStream();
-                        FileInputStream input = new FileInputStream(getPath(data.getData()));
+                        FileInputStream input = new FileInputStream(getPath(uri));
                         byte[] buffer = new byte[1024];
                         int n;
                         while (-1 != (n = input.read(buffer)))
