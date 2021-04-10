@@ -1,3 +1,5 @@
+import time
+
 from flask import Flask, request
 import json
 import copy
@@ -260,7 +262,8 @@ def send_message():
         'type': request.json['type'],
         'content': request.json['content'],
         'user': auth.current_user(),
-        'id': str(uuid.uuid4())
+        'id': str(uuid.uuid4()),
+        'time': int(time.time())
     })
     save_data()
     return 'OK'
@@ -285,15 +288,11 @@ def send_file():
         'type': request.args.get('type'),
         'content': 'https://example.thelogicmaster.com/file/' + message_id,
         'user': auth.current_user(),
-        'id': message_id
+        'id': message_id,
+        'time': int(time.time())
     })
     save_data()
     return 'OK'
-
-
-#@app.route('/file/<f>')
-#def get_file(f):
-#    return app.send_static_file(f)  # Totally not completely insecure
 
 
 @app.route('/friends')

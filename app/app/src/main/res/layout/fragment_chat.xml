@@ -18,9 +18,16 @@
 
         <TextView
             android:id="@+id/chat_name"
+            android:layout_weight="0.9"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="24dp" />
+
+        <Button
+            android:id="@+id/edit_chat"
+            android:text="Manage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

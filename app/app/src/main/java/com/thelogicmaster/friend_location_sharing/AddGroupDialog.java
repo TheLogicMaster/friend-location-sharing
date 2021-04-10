@@ -72,7 +72,7 @@ public class AddGroupDialog extends BottomSheetDialogFragment {
             }
             RequestQueue queue = Volley.newRequestQueue(requireContext());
             queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "createGroup", data,
-                    response -> {},
+                    response -> dismiss(),
                     error -> {
                         Log.e("CreateGroup", "Failed to create group", error);
                         Toast.makeText(requireContext(), "Failed to create group", Toast.LENGTH_SHORT).show();

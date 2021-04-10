@@ -18,6 +18,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -61,6 +63,7 @@ public class ChatFragment extends Fragment {
     private LocationSharingViewModel viewModel;
     private RequestQueue queue;
     private Uri imageUri;
+    private Chat chat;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -84,17 +87,25 @@ public class ChatFragment extends Fragment {
             if (chat == null)
                 return;
 
+            this.chat = chat;
             chatName.setText(chat.name);
             int prev = adapter.getItemCount();
             adapter.setMessages(chat.messages);
-            if (prev != adapter.getItemCount())
-                recyclerView.scrollToPosition(adapter.getItemCount() - 1);
+            if (prev == 0 || prev != adapter.getItemCount())
+                new Handler(Looper.getMainLooper()).postDelayed(() ->
+                        recyclerView.scrollToPosition(adapter.getItemCount() - 1), 500);
         });
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
-        adapter = new MessageRecyclerViewAdapter(Helpers.getUsername(getContext()));
+        adapter = new MessageRecyclerViewAdapter(Helpers.getUsername(getContext()), message ->
+                (new MessageDetailsDialog(message)).show(getChildFragmentManager(), "MessageDetails"));
         recyclerView.setAdapter(adapter);
+
+        view.findViewById(R.id.edit_chat).setOnClickListener(v ->
+                (new ManageChatDialog(chat, () ->
+                        Navigation.findNavController(view).navigate(R.id.action_chatFragment_to_chatListFragment)
+                )).show(getChildFragmentManager(), "ManageChat"));
 
         view.findViewById(R.id.send_message).setOnClickListener(v -> {
             JSONObject data = new JSONObject();

@@ -72,7 +72,7 @@ public class AddChatDialog extends BottomSheetDialogFragment {
             }
             RequestQueue queue = Volley.newRequestQueue(requireContext());
             queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "createChat", data,
-                    response -> {},
+                    response -> dismiss(),
                     error -> {
                         Log.e("CreateChat", "Failed to create chat", error);
                         Toast.makeText(requireContext(), "Failed to create chat", Toast.LENGTH_SHORT).show();

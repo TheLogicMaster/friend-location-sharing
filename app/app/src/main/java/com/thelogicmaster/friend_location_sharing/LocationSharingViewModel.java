@@ -183,7 +183,8 @@ public class LocationSharingViewModel extends AndroidViewModel {
                                     messageObj.getString("id"),
                                     messageObj.getString("user"),
                                     Message.MessageType.valueOf(messageObj.getString("type")),
-                                    messageObj.getString("content")
+                                    messageObj.getString("content"),
+                                    messageObj.getLong("time")
                             ));
                         }
 
