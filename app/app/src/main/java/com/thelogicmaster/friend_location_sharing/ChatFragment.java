@@ -91,7 +91,7 @@ public class ChatFragment extends Fragment {
 
         recyclerView = view.findViewById(R.id.list);
         recyclerView.setLayoutManager(new GridLayoutManager(view.getContext(), 1));
-        adapter = new MessageRecyclerViewAdapter();
+        adapter = new MessageRecyclerViewAdapter(Helpers.getUsername(getContext()));
         recyclerView.setAdapter(adapter);
 
         view.findViewById(R.id.send_message).setOnClickListener(v -> {
@@ -135,8 +135,7 @@ public class ChatFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == 6969 && resultCode == RESULT_OK) {
-            Uri selectedImage = data.getData();
+        if (resultCode == RESULT_OK) {
             FileUploadRequest volleyMultipartRequest = new FileUploadRequest(Request.Method.POST, Helpers.BASE_URL + "sendFile?id=" + id + "&type=IMAGE",
                     response -> {},
                     error -> {
@@ -144,23 +143,19 @@ public class ChatFragment extends Fragment {
                         Log.e("SendImage","Failed to send image", error);
                     }, Helpers.getAuth(getContext())) {
 
-
                 @Override
                 protected Map<String, DataPart> getByteData() {
                     Map<String, DataPart> params = new HashMap<>();
-                    long imagename = System.currentTimeMillis();
                     try {
-
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        FileInputStream fis = new FileInputStream(getPath(data.getData()));
-                        byte[] buf = new byte[1024];
+                        ByteArrayOutputStream output = new ByteArrayOutputStream();
+                        FileInputStream input = new FileInputStream(getPath(data.getData()));
+                        byte[] buffer = new byte[1024];
                         int n;
-                        while (-1 != (n = fis.read(buf)))
-                            baos.write(buf, 0, n);
-                        byte[] bbytes = baos.toByteArray();
-                        params.put("file", new DataPart("" + imagename, bbytes));
+                        while (-1 != (n = input.read(buffer)))
+                            output.write(buffer, 0, n);
+                        byte[] bytes = output.toByteArray();
+                        params.put("file", new DataPart("" + System.currentTimeMillis(), bytes));
                     } catch (IOException e) {
-                        //Toast.makeText(getContext(), "Failed to send image", Toast.LENGTH_LONG).show();
                         Log.e("SendImage","Failed to send image", e);
                     }
 
@@ -177,6 +172,7 @@ public class ChatFragment extends Fragment {
         }
     }
 
+    // Source: https://stackoverflow.com/questions/2169649/get-pick-an-image-from-androids-built-in-gallery-app-programmatically
     public String getPath(Uri uri) {
         // just some safety built in
         if( uri == null ) {
