@@ -1,7 +1,15 @@
 package com.thelogicmaster.friend_location_sharing;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
@@ -9,6 +17,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,6 +30,8 @@ import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.Volley;
 import com.google.android.material.chip.Chip;
 
@@ -28,9 +39,17 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import static android.app.Activity.RESULT_OK;
 
 public class ChatFragment extends Fragment {
 
@@ -39,10 +58,13 @@ public class ChatFragment extends Fragment {
     private MessageRecyclerViewAdapter adapter;
     private Timer timer;
     private LocationSharingViewModel viewModel;
+    private RequestQueue queue;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_chat, container, false);
+
+        queue = Volley.newRequestQueue(getContext());
 
         id = getArguments().getString("id");
 
@@ -82,7 +104,7 @@ public class ChatFragment extends Fragment {
             } catch (JSONException e) {
                 Log.e("AddChat", "Failed to create request data", e);
             }
-            RequestQueue queue = Volley.newRequestQueue(requireContext());
+
             queue.add(new AuthJsonRequest(Request.Method.POST, Helpers.BASE_URL + "sendMessage", data,
                     response -> messageText.setText(""),
                     error -> {
@@ -97,16 +119,92 @@ public class ChatFragment extends Fragment {
         });
 
         view.findViewById(R.id.send_file).setOnClickListener(v -> {
+            // Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            //startActivityForResult(takePicture, 69);//zero can be replaced with any action code (called requestCode)
 
+            if ((ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) && (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED))
+                ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 100);
+            else {
+                Intent pickPhoto = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(pickPhoto , 6969);
+            }
         });
 
         return view;
     }
 
     @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == 6969 && resultCode == RESULT_OK) {
+            Uri selectedImage = data.getData();
+            FileUploadRequest volleyMultipartRequest = new FileUploadRequest(Request.Method.POST, Helpers.BASE_URL + "sendFile?id=" + id + "&type=IMAGE",
+                    response -> {},
+                    error -> {
+                        Toast.makeText(getContext(), "Failed to send image", Toast.LENGTH_LONG).show();
+                        Log.e("SendImage","Failed to send image", error);
+                    }, Helpers.getAuth(getContext())) {
+
+
+                @Override
+                protected Map<String, DataPart> getByteData() {
+                    Map<String, DataPart> params = new HashMap<>();
+                    long imagename = System.currentTimeMillis();
+                    try {
+
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        FileInputStream fis = new FileInputStream(getPath(data.getData()));
+                        byte[] buf = new byte[1024];
+                        int n;
+                        while (-1 != (n = fis.read(buf)))
+                            baos.write(buf, 0, n);
+                        byte[] bbytes = baos.toByteArray();
+                        params.put("file", new DataPart("" + imagename, bbytes));
+                    } catch (IOException e) {
+                        //Toast.makeText(getContext(), "Failed to send image", Toast.LENGTH_LONG).show();
+                        Log.e("SendImage","Failed to send image", e);
+                    }
+
+                    return params;
+                }
+
+                @Override
+                protected Response<NetworkResponse> parseNetworkResponse(NetworkResponse response) {
+                    return Response.success(null, null);
+                }
+            };
+
+            queue.add(volleyMultipartRequest);
+        }
+    }
+
+    public String getPath(Uri uri) {
+        // just some safety built in
+        if( uri == null ) {
+            // TODO perform some logging or show user feedback
+            return null;
+        }
+        // try to retrieve the image from the media store first
+        // this will only work for images selected from gallery
+        String[] projection = { MediaStore.Images.Media.DATA };
+
+        Cursor cursor = getActivity().getContentResolver().query(uri, projection, null, null, null);
+        if( cursor != null ){
+            int column_index = cursor
+                    .getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            String path = cursor.getString(column_index);
+            cursor.close();
+            return path;
+        }
+        // this is our fallback here
+        return uri.getPath();
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
 
+        queue.start();
         viewModel.updateFriends(null);
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -121,6 +219,7 @@ public class ChatFragment extends Fragment {
     public void onPause() {
         super.onPause();
 
+        queue.stop();
         if (timer != null)
             timer.cancel();
     }

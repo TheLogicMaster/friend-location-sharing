@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import uuid
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/file', static_folder='files')
 auth = HTTPBasicAuth()
 
 data = {
@@ -264,6 +264,36 @@ def send_message():
     })
     save_data()
     return 'OK'
+
+
+@app.route('/sendFile', methods=['post'])
+@auth.login_required
+def send_file():
+    for c in data['chats']:
+        if c['id'] == request.args.get('id'):
+            chat = c
+            break
+    else:
+        return 'No such chat', 404
+
+    message_id = str(uuid.uuid4())
+    request.files['file'].name = message_id
+    request.files['file'].save('./files/' + message_id)
+
+    # noinspection PyUnresolvedReferences
+    chat['messages'].append({
+        'type': request.args.get('type'),
+        'content': 'https://example.thelogicmaster.com/file/' + message_id,
+        'user': auth.current_user(),
+        'id': message_id
+    })
+    save_data()
+    return 'OK'
+
+
+#@app.route('/file/<f>')
+#def get_file(f):
+#    return app.send_static_file(f)  # Totally not completely insecure
 
 
 @app.route('/friends')
