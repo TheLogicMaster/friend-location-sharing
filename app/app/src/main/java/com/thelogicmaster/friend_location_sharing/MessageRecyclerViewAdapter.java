@@ -39,7 +39,7 @@ public class MessageRecyclerViewAdapter extends RecyclerView.Adapter<MessageRecy
     public void onBindViewHolder(final ViewHolder holder, int position) {
         holder.message = messages.get(position);
         if (holder.message.user.equals(username))
-            holder.cardView.setCardBackgroundColor(Color.GREEN);
+            holder.cardView.setCardBackgroundColor(Color.CYAN);
         holder.userView.setText(messages.get(position).user);
         if (messages.get(position).type == Message.MessageType.TEXT)
             holder.textView.setText(messages.get(position).content);
